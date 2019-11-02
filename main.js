@@ -17,8 +17,15 @@ RESOURCES = [
 
 */
 
-const generateCity = function (resources) {
+/* 
+Main function 
+Receives loaded shaders from server
+Creates the procedurally generated city and handles the rendering
+*/
+const main = function (resources) {
 
+
+  // Constants
   const near = 0.1;
   const far = 10000;
   const repeatCount = 20;
@@ -34,6 +41,8 @@ const generateCity = function (resources) {
   const cameraDist = 2200;
   const cameraHeight = 1800;
 
+  // Three.js init
+
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerHeight, near, far);
 
@@ -45,15 +54,19 @@ const generateCity = function (resources) {
   renderer.setPixelRatio(window.devicePixelRatio);
   document.body.appendChild(renderer.domElement);
 
+  // Light direction angle, will be passed as uniform to shaders
   const light_dir = {
     value: Math.PI
   };
 
+  // Will contain an array with all the lights (cars)
   let lights = null;
 
   init();
 
   function init() {
+
+    // generate city
     addSkyBox();
     const map = generateMap();
     const base = createBaseGeometry(map);
@@ -62,8 +75,8 @@ const generateCity = function (resources) {
     addLightsToGroup(lights, base);
     scene.add(base);
 
+    // camera controls
     camera.position.set(cameraDist, cameraHeight, cameraDist);
-
     const controls = new THREE.OrbitControls(camera, renderer.domElement);
     controls.maxPolarAngle = Math.PI * 0.5;
     controls.minDistance = near;
@@ -73,11 +86,12 @@ const generateCity = function (resources) {
   }
 
   function animate(timestamp) {
+
     requestAnimationFrame(animate);
-    light_dir.value += 0.05;
-    // camera.position.set(cameraDist * Math.sin(-light_dir.value / 10), cameraHeight, cameraDist * Math.cos(-light_dir.value / 10));
-    // camera.lookAt(new THREE.Vector3());
-    moveLights(lights);
+
+    light_dir.value += 0.05; // move light direction
+    moveLights(lights); // moves cars
+
     renderer.render(scene, camera);
   }
 
@@ -96,47 +110,7 @@ const generateCity = function (resources) {
     // scene.fog = new THREE.FogExp2(0xcccccc, 0.2);
   }
 
-  function createCell(x, y, z) {
-    const group = new THREE.Group();
-    group.position.set(x, y, z);
-    return group;
-  }
-
-  function createRange(n) {
-    return [...Array(n).keys()];
-  }
-
-  function convert1DIndexTo2D(index, repeatCount) {
-    return {
-      row: Math.floor(index / repeatCount),
-      col: index % repeatCount
-    };
-  }
-
-  function generateMap() {
-
-    const baseSize = {
-      width: repeatCount * cellSize + (repeatCount - 1) * streetWidth,
-      depth: repeatCount * cellSize + (repeatCount - 1) * streetWidth
-    };
-
-    const cellPositions = createRange(repeatCount * repeatCount).map(i => convert1DIndexTo2D(i, repeatCount));
-
-    const cells = cellPositions.map(pos =>
-      createCell(
-        pos.col * (cellSize + streetWidth),
-        0,
-        -(pos.row * (cellSize + streetWidth))
-      )
-    );
-
-    return {
-      baseSize,
-      cells
-    };
-
-  }
-
+  // shader for everything besides the moving lights (cars)
   function getColoredShader(color) {
     return new THREE.ShaderMaterial({
       uniforms: {
@@ -162,129 +136,56 @@ const generateCity = function (resources) {
     return Math.floor(Math.random() * (max - min + 1)) + min; //The maximum is inclusive and the minimum is inclusive 
   }
 
-  function getLigtShader(color, center) {
-    return new THREE.ShaderMaterial({
-      uniforms: {
-        texture: {
-          type: "t",
-          value: THREE.ImageUtils.loadTexture("img/light.png")
-        },
-        center: {
-          value: center
-        }
-      },
-      vertexShader: resources.vertl_shader,
-      fragmentShader: resources.fragl_shader,
-    });
+  // basically a step function
+  function getRandWithLimits(low, high) {
+    const rand = Math.random();
+    if (rand < low) return low;
+    if (rand > high) return high;
+    return rand;
   }
 
-  function createLight(no, direction) {
-
-    let x,
-      y = carRadius,
-      z;
-
-    const streetLength = repeatCount * cellSize + (repeatCount - 1) * streetWidth;
-
-    switch (direction) {
-      case 1:
-        z = -(no * cellSize + (no - 1) * streetWidth + streetWidth / 4);
-        x = getRandomIntInclusive(0, streetLength);
-        break;
-      case 2:
-        z = -(no * cellSize + (no - 1) * streetWidth + streetWidth * 3 / 4);
-        x = getRandomIntInclusive(0, streetLength);
-        break;
-      case 3:
-        x = no * cellSize + (no - 1) * streetWidth + streetWidth / 4;
-        z = -getRandomIntInclusive(0, streetLength);
-        break;
-      case 4:
-        x = no * cellSize + (no - 1) * streetWidth + streetWidth * 3 / 4;
-        z = -getRandomIntInclusive(0, streetLength);
-        break;
-      default:
-        break;
-    }
-
-    const centerPos = new THREE.Vector3(x, y, z);
-
-    const geometry = new THREE.CircleGeometry(carRadius, 32);
-    const material = getLigtShader(carColor, centerPos);
-    const sphere = new THREE.Mesh(geometry, material);
-
-    sphere.position.set(x, y, z);
-    sphere.rotation.x -= Math.PI / 2;
-
-    return sphere;
-
+  // mimic of Python range function
+  function createRange(n) {
+    return [...Array(n).keys()];
   }
 
-  function createLights(count) {
+  // given the index of a flattened 2D array and the no. of columns, returns 2D index
+  function convert1DIndexTo2D(index, repeatCount) {
+    return {
+      row: Math.floor(index / repeatCount),
+      col: index % repeatCount
+    };
+  }
 
-    const lights = {
-      xpos: [],
-      xneg: [],
-      zpos: [],
-      zneg: []
+  // generates the base of the city with the cells which will hold the buidlings
+  function generateMap() {
+
+    const baseSize = {
+      width: repeatCount * cellSize + (repeatCount - 1) * streetWidth,
+      depth: repeatCount * cellSize + (repeatCount - 1) * streetWidth
     };
 
-    for (let l = 0; l < count; ++l) {
-      const streetNo = getRandomIntInclusive(1, repeatCount - 1);
-      const direction = getRandomIntInclusive(1, 4);
-      switch (direction) {
-        case 1:
-          lights.xpos.push(createLight(streetNo, direction));
-          break;
-        case 2:
-          lights.xneg.push(createLight(streetNo, direction));
-          break;
-        case 3:
-          lights.zpos.push(createLight(streetNo, direction));
-          break;
-        case 4:
-          lights.zneg.push(createLight(streetNo, direction));
-          break;
-        default:
-          break;
-      }
-    }
+    const cellPositions = createRange(repeatCount * repeatCount).map(i => convert1DIndexTo2D(i, repeatCount));
 
-    return lights;
+    const cells = cellPositions.map(pos =>
+      createCell(
+        pos.col * (cellSize + streetWidth),
+        0,
+        -(pos.row * (cellSize + streetWidth))
+      )
+    );
+
+    return {
+      baseSize,
+      cells
+    };
 
   }
 
-  function addLightsToGroup(lights, group) {
-    lights.xpos.forEach(l => group.add(l));
-    lights.zpos.forEach(l => group.add(l));
-    lights.xneg.forEach(l => group.add(l));
-    lights.zneg.forEach(l => group.add(l));
-  }
-
-  function moveLights(lights) {
-
-    const streetLength = repeatCount * cellSize + (repeatCount - 1) * streetWidth;
-
-    lights.xpos.forEach(l => {
-      const pos = l.position.x;
-      l.position.x = pos + carSpeed > streetLength ? 0 : pos + carSpeed;
-    });
-
-    lights.xneg.forEach(l => {
-      const pos = l.position.x;
-      l.position.x = pos - carSpeed < 0 ? streetLength : pos - carSpeed;
-    });
-
-    lights.zpos.forEach(l => {
-      const pos = l.position.z;
-      l.position.z = pos - carSpeed < -streetLength ? 0 : pos - carSpeed;
-    });
-
-    lights.zneg.forEach(l => {
-      const pos = l.position.z;
-      l.position.z = pos + carSpeed > 0 ? -streetLength : pos + carSpeed;
-    });
-
+  function createCell(x, y, z) {
+    const group = new THREE.Group();
+    group.position.set(x, y, z);
+    return group;
   }
 
   function generateShapeMesh(shape, color, x, y, z, rx, ry, rz, s) {
@@ -306,6 +207,7 @@ const generateCity = function (resources) {
     return shape;
   }
 
+  // generates geometries for base of the city (grid with cells and streets)
   function createBaseGeometry(map) {
 
     const {
@@ -348,7 +250,8 @@ const generateCity = function (resources) {
     return block;
   }
 
-  function makeBlocks(cell) {
+  // puts four randomly generated blocks in a given cell
+  function fillCellWithRandomBlocks(cell) {
 
     const getHeight = block => block.geometry.parameters.height;
     const innerMargin = cellSize / 20;
@@ -396,14 +299,7 @@ const generateCity = function (resources) {
   }
 
   function makeCity(cells) {
-    cells.forEach(makeBlocks);
-  }
-
-  function getRandWithLimits(low, high) {
-    const rand = Math.random();
-    if (rand < low) return low;
-    if (rand > high) return high;
-    return rand;
+    cells.forEach(fillCellWithRandomBlocks);
   }
 
   function divideSquareIntoRegions() {
@@ -411,6 +307,139 @@ const generateCity = function (resources) {
       x: getRandWithLimits(0.2, 0.8),
       y: getRandWithLimits(0.2, 0.8)
     };
+  }
+
+  /* 
+    Lights section
+  */
+
+  // separate shader for moving lights (they have a texture)
+  function getLigtShader(color, center) {
+    return new THREE.ShaderMaterial({
+      uniforms: {
+        texture: {
+          type: "t",
+          value: THREE.ImageUtils.loadTexture("img/light.png")
+        },
+        center: {
+          value: center
+        }
+      },
+      vertexShader: resources.vertl_shader,
+      fragmentShader: resources.fragl_shader,
+    });
+  }
+
+  // creates four collections of moving lights (one collection for each NESW orientation)
+  function createLights(count) {
+
+    const lights = {
+      xpos: [],
+      xneg: [],
+      zpos: [],
+      zneg: []
+    };
+
+    for (let l = 0; l < count; ++l) {
+      const streetNo = getRandomIntInclusive(1, repeatCount - 1);
+      const direction = getRandomIntInclusive(1, 4);
+      switch (direction) {
+        case 1:
+          lights.xpos.push(createLight(streetNo, direction));
+          break;
+        case 2:
+          lights.xneg.push(createLight(streetNo, direction));
+          break;
+        case 3:
+          lights.zpos.push(createLight(streetNo, direction));
+          break;
+        case 4:
+          lights.zneg.push(createLight(streetNo, direction));
+          break;
+        default:
+          break;
+      }
+    }
+
+    return lights;
+
+  }
+
+  // create cars with random initial positions (on generated streets) and moving directions 
+  function createLight(no, direction) {
+
+    let x,
+      y = carRadius, // they float above the ground
+      z;
+
+    const streetLength = repeatCount * cellSize + (repeatCount - 1) * streetWidth;
+
+    // center car on lane and put into a random position on the given street
+    switch (direction) {
+      case 1:
+        z = -(no * cellSize + (no - 1) * streetWidth + streetWidth / 4);
+        x = getRandomIntInclusive(0, streetLength);
+        break;
+      case 2:
+        z = -(no * cellSize + (no - 1) * streetWidth + streetWidth * 3 / 4);
+        x = getRandomIntInclusive(0, streetLength);
+        break;
+      case 3:
+        x = no * cellSize + (no - 1) * streetWidth + streetWidth / 4;
+        z = -getRandomIntInclusive(0, streetLength);
+        break;
+      case 4:
+        x = no * cellSize + (no - 1) * streetWidth + streetWidth * 3 / 4;
+        z = -getRandomIntInclusive(0, streetLength);
+        break;
+      default:
+        break;
+    }
+
+    const centerPos = new THREE.Vector3(x, y, z);
+
+    const geometry = new THREE.CircleGeometry(carRadius, 32);
+    const material = getLigtShader(carColor, centerPos);
+    const sphere = new THREE.Mesh(geometry, material);
+
+    sphere.position.set(x, y, z);
+    sphere.rotation.x -= Math.PI / 2;
+
+    return sphere;
+
+  }
+
+  function addLightsToGroup(lights, group) {
+    lights.xpos.forEach(l => group.add(l));
+    lights.zpos.forEach(l => group.add(l));
+    lights.xneg.forEach(l => group.add(l));
+    lights.zneg.forEach(l => group.add(l));
+  }
+
+  function moveLights(lights) {
+
+    const streetLength = repeatCount * cellSize + (repeatCount - 1) * streetWidth;
+
+    lights.xpos.forEach(l => {
+      const pos = l.position.x;
+      l.position.x = pos + carSpeed > streetLength ? 0 : pos + carSpeed;
+    });
+
+    lights.xneg.forEach(l => {
+      const pos = l.position.x;
+      l.position.x = pos - carSpeed < 0 ? streetLength : pos - carSpeed;
+    });
+
+    lights.zpos.forEach(l => {
+      const pos = l.position.z;
+      l.position.z = pos - carSpeed < -streetLength ? 0 : pos - carSpeed;
+    });
+
+    lights.zneg.forEach(l => {
+      const pos = l.position.z;
+      l.position.z = pos + carSpeed > 0 ? -streetLength : pos + carSpeed;
+    });
+
   }
 
 };
@@ -441,4 +470,4 @@ function load_resources() {
 }
 
 // Load the resources and then create the scene when resources are loaded
-load_resources().then(res => generateCity(res));
+load_resources().then(res => main(res));
