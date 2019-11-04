@@ -188,25 +188,6 @@ const main = function (resources) {
     return group;
   }
 
-  function generateShapeMesh(shape, color, x, y, z, rx, ry, rz, s) {
-    const geometry = new THREE.ShapeGeometry(shape);
-    const mesh = new THREE.Mesh(geometry, getColoredShader(color));
-    mesh.position.set(x, y, z);
-    mesh.rotation.set(rx, ry, rz);
-    mesh.scale.set(s, s, s);
-    return mesh;
-  }
-
-  function generateRectShape(width, height) {
-    const shape = new THREE.Shape();
-    shape.moveTo(0, 0);
-    shape.lineTo(width, 0);
-    shape.lineTo(width, height);
-    shape.lineTo(0, height);
-    shape.lineTo(0, 0);
-    return shape;
-  }
-
   // generates geometries for base of the city (grid with cells and streets)
   function createBaseGeometry(map) {
 
@@ -226,28 +207,50 @@ const main = function (resources) {
       base.add(cell);
     });
 
+    // generate streets
     for (let i = 0; i < repeatCount - 1; ++i) {
-      const street = generateRectShape(streetWidth, baseSize.depth);
-      const mesh = generateShapeMesh(street, streetColor, (i + 1) * cellSize + i * streetWidth, 0.1, 0, -Math.PI / 2, 0, 0, 1);
-      base.add(mesh);
-    }
-
-    for (let i = 0; i < repeatCount - 1; ++i) {
-      const street = generateRectShape(baseSize.width, streetWidth);
-      const mesh = generateShapeMesh(street, streetColor, 0, 0.1, -((i + 1) * cellSize + i * streetWidth), -Math.PI / 2, 0, 0, 1);
-      base.add(mesh);
+      const streetShapes = [generateRectShape(streetWidth, baseSize.depth), generateRectShape(baseSize.width, streetWidth)];
+      const zAxisStreet = generateShapeMesh(streetShapes[0], streetColor, (i + 1) * cellSize + i * streetWidth, 0.1, 0, -Math.PI / 2, 0, 0, 1);
+      const xAxisStreet = generateShapeMesh(streetShapes[1], streetColor, 0, 0.1, -((i + 1) * cellSize + i * streetWidth), -Math.PI / 2, 0, 0, 1);
+      base.add(xAxisStreet, zAxisStreet);
     }
 
     return base;
 
   }
 
+  function generateShapeMesh(shape, color, x, y, z, rx, ry, rz, s) {
+    const geometry = new THREE.ShapeGeometry(shape);
+    const mesh = new THREE.Mesh(geometry, getColoredShader(color));
+    mesh.position.set(x, y, z);
+    mesh.rotation.set(rx, ry, rz);
+    mesh.scale.set(s, s, s);
+    return mesh;
+  }
+
+  function generateRectShape(width, height) {
+    const shape = new THREE.Shape();
+    shape.moveTo(0, 0);
+    shape.lineTo(width, 0);
+    shape.lineTo(width, height);
+    shape.lineTo(0, height);
+    shape.lineTo(0, 0);
+    return shape;
+  }
+
   function createBlock(width, depth) {
-    const grayShade = 0.05 + Math.random() / 10;
+    const grayShade = 0.15 + Math.random() / 5;
     const geometry = new THREE.BoxGeometry(width, height * getRandWithLimits(0.2, 1), depth);
     const material = getColoredShader(new THREE.Vector3(grayShade, grayShade, grayShade));
     const block = new THREE.Mesh(geometry, material);
     return block;
+  }
+
+  function divideSquareIntoRegions() {
+    return {
+      x: getRandWithLimits(0.2, 0.8),
+      y: getRandWithLimits(0.2, 0.8)
+    };
   }
 
   // puts four randomly generated blocks in a given cell
@@ -302,13 +305,6 @@ const main = function (resources) {
     cells.forEach(fillCellWithRandomBlocks);
   }
 
-  function divideSquareIntoRegions() {
-    return {
-      x: getRandWithLimits(0.2, 0.8),
-      y: getRandWithLimits(0.2, 0.8)
-    };
-  }
-
   /* 
     Lights section
   */
@@ -340,25 +336,13 @@ const main = function (resources) {
       zneg: []
     };
 
+    const collectionKeys = Object.keys(lights);
+
     for (let l = 0; l < count; ++l) {
       const streetNo = getRandomIntInclusive(1, repeatCount - 1);
       const direction = getRandomIntInclusive(1, 4);
-      switch (direction) {
-        case 1:
-          lights.xpos.push(createLight(streetNo, direction));
-          break;
-        case 2:
-          lights.xneg.push(createLight(streetNo, direction));
-          break;
-        case 3:
-          lights.zpos.push(createLight(streetNo, direction));
-          break;
-        case 4:
-          lights.zneg.push(createLight(streetNo, direction));
-          break;
-        default:
-          break;
-      }
+      const collectionName = collectionKeys[direction-1];
+      lights[collectionName].push(createLight(streetNo, direction));
     }
 
     return lights;
@@ -410,10 +394,9 @@ const main = function (resources) {
   }
 
   function addLightsToGroup(lights, group) {
-    lights.xpos.forEach(l => group.add(l));
-    lights.zpos.forEach(l => group.add(l));
-    lights.xneg.forEach(l => group.add(l));
-    lights.zneg.forEach(l => group.add(l));
+    for (let collection in lights) {
+      lights[collection].forEach(light => group.add(light));
+    }
   }
 
   function moveLights(lights) {
