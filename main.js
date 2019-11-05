@@ -384,12 +384,12 @@ const main = function (resources) {
 
     const geometry = new THREE.CircleGeometry(carRadius, 32);
     const material = getLigtShader(carColor, centerPos);
-    const sphere = new THREE.Mesh(geometry, material);
+    const circle = new THREE.Mesh(geometry, material);
 
-    sphere.position.set(x, y, z);
-    sphere.rotation.x -= Math.PI / 2;
+    circle.position.set(x, y, z);
+    circle.rotation.x -= Math.PI / 2;
 
-    return sphere;
+    return circle;
 
   }
 
