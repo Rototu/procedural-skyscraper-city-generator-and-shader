@@ -29,15 +29,15 @@ const main = function (resources) {
   const near = 0.1;
   const far = 10000;
   const repeatCount = 20;
-  const cellSize = 100;
-  const height = 600;
-  const streetWidth = 12;
+  const cellSize = 200;
+  const height = 1000;
+  const streetWidth = 20;
   const groundColor = new THREE.Vector3(0, 0.5, 0);
   const streetColor = new THREE.Vector3(0, 0, 0);
   const lightColor = new THREE.Vector3(0.5, 0.2, 1);
   const carColor = new THREE.Vector3(1, 0.3, 0);
   const carSpeed = 3;
-  const carRadius = 5;
+  const carRadius = 8;
   const cameraDist = 2200;
   const cameraHeight = 1800;
 
@@ -310,12 +310,12 @@ const main = function (resources) {
   */
 
   // separate shader for moving lights (they have a texture)
-  function getLigtShader(color, center) {
+  function getLigtShader(center) {
     return new THREE.ShaderMaterial({
       uniforms: {
         texture: {
           type: "t",
-          value: THREE.ImageUtils.loadTexture("img/light.png")
+          value: (new THREE.TextureLoader()).load( "img/light.png" )
         },
         center: {
           value: center
