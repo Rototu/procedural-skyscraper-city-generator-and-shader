@@ -2,12 +2,10 @@
 
 A 3D procedural skyscraper generator with shaders in Three.js.
 
-## Running
+## Running on local
 
-Run using `serve.sh`.
+Run using `python3 -m http.server` or with your favourite static site server tool.
 
 ## Requirements
 
-Working internet connection, Python, a WebGL2 capable browser
-
-Note: make sure broswer is updated and use it preferably in incognito mode if making changes to files (files serverd by python server are cached by default is some Python versions).
+Working internet connection, Python, a modern browser

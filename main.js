@@ -1,9 +1,12 @@
+import * as THREE from '/lib/three.js'
+import { OrbitControls } from '/lib/orbitcontrols.js'
+
 // Add any resources you want to load here
 // You will then be able to reference them in initialise_scene
 // e.g. as "resources.vert_shader"
-RESOURCES = [
+const RESOURCES = [
   // format is:
-  // ["name", "path-to-resource"]
+  // ["name", "path-to-resource"]`
   ["vert_shader", "shaders/default.vert"],
   ["frag_shader", "shaders/default.frag"],
   ["vertl_shader", "shaders/light.vert"],
@@ -77,7 +80,7 @@ const main = function (resources) {
 
     // camera controls
     camera.position.set(cameraDist, cameraHeight, cameraDist);
-    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    const controls = new OrbitControls(camera, renderer.domElement);
     controls.maxPolarAngle = Math.PI * 0.5;
     controls.minDistance = near;
     controls.maxDistance = far;
@@ -310,12 +313,13 @@ const main = function (resources) {
   */
 
   // separate shader for moving lights (they have a texture)
-  function getLigtShader(center) {
+  function getLightShader(center) {
+    const texture = new THREE.TextureLoader().load("img/light.png")
     return new THREE.ShaderMaterial({
       uniforms: {
-        texture: {
+        uTexture: {
           type: "t",
-          value: (new THREE.TextureLoader()).load( "img/light.png" )
+          value: texture
         },
         center: {
           value: center
@@ -341,7 +345,7 @@ const main = function (resources) {
     for (let l = 0; l < count; ++l) {
       const streetNo = getRandomIntInclusive(1, repeatCount - 1);
       const direction = getRandomIntInclusive(1, 4);
-      const collectionName = collectionKeys[direction-1];
+      const collectionName = collectionKeys[direction - 1];
       lights[collectionName].push(createLight(streetNo, direction));
     }
 
@@ -383,7 +387,7 @@ const main = function (resources) {
     const centerPos = new THREE.Vector3(x, y, z);
 
     const geometry = new THREE.CircleGeometry(carRadius, 32);
-    const material = getLigtShader(carColor, centerPos);
+    const material = getLightShader(carColor, centerPos);
     const circle = new THREE.Mesh(geometry, material);
 
     circle.position.set(x, y, z);
