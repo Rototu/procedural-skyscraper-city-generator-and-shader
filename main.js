@@ -1,5 +1,5 @@
-import * as THREE from '/lib/three.js'
-import { OrbitControls } from '/lib/orbitcontrols.js'
+import * as THREE from './lib/three.js'
+import { OrbitControls } from './lib/orbitcontrols.js'
 
 // Add any resources you want to load here
 // You will then be able to reference them in initialise_scene
@@ -7,10 +7,10 @@ import { OrbitControls } from '/lib/orbitcontrols.js'
 const RESOURCES = [
   // format is:
   // ["name", "path-to-resource"]`
-  ["vert_shader", "shaders/default.vert"],
-  ["frag_shader", "shaders/default.frag"],
-  ["vertl_shader", "shaders/light.vert"],
-  ["fragl_shader", "shaders/light.frag"]
+  ["vert_shader", "./shaders/default.vert"],
+  ["frag_shader", "./shaders/default.frag"],
+  ["vertl_shader", "./shaders/light.vert"],
+  ["fragl_shader", "./shaders/light.frag"]
 ];
 
 /* 
